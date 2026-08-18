@@ -1,4 +1,4 @@
-name: Deploy Swadistha POS Demo
+name: Deploy Swadistha
 on:
   push:
     branches: [ main ]
