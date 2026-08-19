@@ -1,0 +1,101 @@
+name: Fix POS Print And Layout
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  fix-pos:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Apply final POS fixes
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+
+          # Remove every previously injected FINAL BILLING LAYOUT block.
+          s = re.sub(r'/\* ===== FINAL BILLING LAYOUT ===== \*/.*?</style>', '</style>', s, flags=re.S)
+          s = re.sub(r'/\* ===== ONE-SCREEN BILLING LAYOUT ===== \*/.*?</style>', '</style>', s, flags=re.S)
+          s = re.sub(r'/\* ===== BILLING SCROLL FIX ===== \*/.*?</style>', '</style>', s, flags=re.S)
+
+          css = r'''
+<style id="swadistha-final-layout">
+@media (min-width:1001px){
+  html,body{height:100%;overflow:hidden}
+  .app{height:100vh;min-height:0}
+  .body{height:calc(100vh - 64px);min-height:0}
+  .main{height:100%;min-height:0;overflow:hidden;padding:10px}
+  #billing{height:100%;min-height:0;overflow:hidden}
+  #billing .billing-grid{height:calc(100vh - 165px);min-height:0;overflow:hidden;grid-template-columns:minmax(0,1.25fr) minmax(340px,.75fr)}
+  #billing .billing-grid>.panel:first-child{min-height:0;overflow-y:auto}
+  #billing .billing-grid>.panel:last-child{min-height:0;overflow:hidden;display:flex;flex-direction:column}
+  #billing .cart{flex:1 1 auto;min-height:70px;max-height:none;overflow-y:auto}
+  #billing .totals,#billing .actions,#billing .status{flex:0 0 auto}
+}
+@media print{
+  @page{margin:8mm}
+  html,body{height:auto!important;min-height:0!important;overflow:visible!important;background:#fff!important}
+  .app,.body,.main,#billing,#billing .billing-grid,#billing .billing-grid>.panel,#billing .cart{height:auto!important;min-height:0!important;max-height:none!important;overflow:visible!important}
+  .topbar,.side,.no-print,#billing>h1,#billing>.sub,#billing>.panel:first-of-type,#billing>.tools,#billing .billing-grid>.panel:first-child,.actions,#billing>.status{display:none!important}
+  #billing{display:block!important}
+  #billing .billing-grid{display:block!important}
+  #billing .billing-grid>.panel:last-child{display:block!important;border:0!important;padding:0!important}
+  #billing .bill-top{margin-bottom:8px}
+  #billing .cart{border:1px solid #000!important}
+  #billing .totals{margin-top:8px}
+  *{print-color-adjust:exact;-webkit-print-color-adjust:exact}
+}
+</style>
+'''
+          s = s.replace('</head>', css + '</head>', 1)
+
+          js = r'''
+<script id="swadistha-print-fix">
+(function(){
+  function esc(v){return String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+  window.printBillNow=function(){
+    var no=document.getElementById('billNoInput')?.value||'';
+    var type=document.getElementById('orderType')?.value||'Pack';
+    var name=document.getElementById('customerName')?.value||'';
+    var phone=document.getElementById('customerPhone')?.value||'';
+    var rows=[...document.querySelectorAll('#cartBody tr')].map(function(tr){
+      var c=tr.querySelectorAll('td');
+      if(c.length<3)return '';
+      return '<tr><td>'+esc(c[0].innerText)+'</td><td>'+esc(c[1].innerText)+'</td><td style="text-align:right">'+esc(c[2].innerText)+'</td></tr>';
+    }).join('');
+    var sub=document.getElementById('subtotal')?.innerText||'₹0';
+    var disc=document.getElementById('discountAmt')?.innerText||'₹0';
+    var gst=document.getElementById('gstAmt')?.innerText||'₹0';
+    var total=document.getElementById('grandTotal')?.innerText||'₹0';
+    if(!rows){alert('Please add at least one item before printing.');return}
+    var w=window.open('','_blank','width=420,height=700');
+    if(!w){alert('Please allow pop-ups for this POS page, then press Print Bill again.');return}
+    w.document.write('<!doctype html><html><head><title>Swadistha Bill '+esc(no)+'</title><style>@page{margin:6mm}body{font-family:Arial,sans-serif;width:72mm;margin:0 auto;font-size:12px;color:#000}.center{text-align:center}.title{font-size:20px;font-weight:800}.meta{font-size:11px;line-height:1.5}table{width:100%;border-collapse:collapse;margin-top:8px}th,td{padding:4px 0;border-bottom:1px dashed #999}th{text-align:left}.right{text-align:right}.total{font-size:16px;font-weight:800;border-top:1px solid #000;padding-top:6px;margin-top:5px}.small{font-size:10px;margin-top:8px}@media print{button{display:none}}</style></head><body><div class="center title">SWADISTHA</div><div class="center meta">Invoice No: '+esc(no)+'<br>'+esc(type)+'<br>'+esc(name?name+' | ':'')+esc(phone)+'</div><table><thead><tr><th>Item</th><th>Qty</th><th class="right">Amount</th></tr></thead><tbody>'+rows+'</tbody></table><div class="meta" style="margin-top:7px"><div>Subtotal <span style="float:right">'+esc(sub)+'</span></div><div>Discount <span style="float:right">'+esc(disc)+'</span></div><div>GST <span style="float:right">'+esc(gst)+'</span></div><div class="total">TOTAL <span style="float:right">'+esc(total)+'</span></div></div><div class="center small">Thank you for visiting Swadistha</div><script>window.onload=function(){setTimeout(function(){window.print()},150)};<\/script></body></html>');
+    w.document.close();
+  };
+  window.completeBill=function(){printBillNow()};
+  window.printKotAndBill=function(){printBillNow()};
+})();
+</script>
+'''
+          s = s.replace('</body>', js + '</body>', 1)
+          p.write_text(s,encoding='utf-8')
+          PY
+
+      - name: Commit final fix
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git diff --cached --quiet || git commit -m 'Fix bill printing and finalize one-screen billing layout'
+          git push
