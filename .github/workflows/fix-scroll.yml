@@ -1,4 +1,4 @@
-name: Fix Billing Scroll
+name: Fix Billing Layout
 
 on:
   push:
@@ -8,13 +8,13 @@ permissions:
   contents: write
 
 jobs:
-  fix-scroll:
+  fix-billing-layout:
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Fix desktop page scrolling
+      - name: Apply one-screen billing layout and print-safe CSS
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -23,64 +23,107 @@ jobs:
           p = Path('index.html')
           s = p.read_text(encoding='utf-8')
 
-          pattern = r'/\* ===== ONE-SCREEN BILLING LAYOUT ===== \*/.*?\n}\n</style>'
-          replacement = '''/* ===== BILLING SCROLL FIX ===== */
+          marker = '/* ===== ONE-SCREEN BILLING LAYOUT ===== */'
+          start = s.find(marker)
+          if start < 0:
+              raise SystemExit('Billing layout marker not found')
+          end = s.find('</style>', start)
+          if end < 0:
+              raise SystemExit('Closing style tag not found')
+
+          css = '''/* ===== FINAL BILLING LAYOUT ===== */
           @media (min-width: 1001px) {
             html, body {
-              min-height: 100%;
-              height: auto;
-              overflow-y: auto;
-              overflow-x: hidden;
+              height: 100%;
+              margin: 0;
+              overflow: hidden;
             }
-
             .app {
-              min-height: 100vh;
-              height: auto;
+              height: 100vh;
+              min-height: 0;
             }
-
             .body {
-              min-height: calc(100vh - 64px);
-              height: auto;
+              height: calc(100vh - 64px);
+              min-height: 0;
             }
-
             .main {
-              min-height: calc(100vh - 64px);
-              height: auto;
-              overflow: visible;
+              height: 100%;
+              min-height: 0;
+              overflow: hidden;
               padding: 10px;
             }
-
             #billing {
-              min-height: calc(100vh - 84px);
-              height: auto;
-              overflow: visible;
+              height: 100%;
+              min-height: 0;
+              overflow: hidden;
             }
-
             #billing .billing-grid {
-              align-items: start;
+              height: calc(100vh - 165px);
+              min-height: 0;
+              overflow: hidden;
+              grid-template-columns: minmax(0, 1.25fr) minmax(340px, .75fr);
             }
-
             #billing .billing-grid > .panel {
-              overflow: visible;
+              min-height: 0;
             }
-
-            #billing .cart {
-              max-height: 360px;
+            #billing .billing-grid > .panel:first-child {
               overflow-y: auto;
             }
+            #billing .billing-grid > .panel:last-child {
+              min-height: 0;
+              overflow: hidden;
+              display: flex;
+              flex-direction: column;
+            }
+            #billing .cart {
+              flex: 1 1 auto;
+              min-height: 70px;
+              max-height: none;
+              overflow-y: auto;
+            }
+            #billing .totals,
+            #billing .actions,
+            #billing .status {
+              flex: 0 0 auto;
+            }
+            #billing .actions {
+              margin-top: 6px;
+            }
           }
-        </style>'''
 
-          ns, n = re.subn(pattern, replacement, s, count=1, flags=re.S)
-          if n != 1:
-              raise SystemExit('Could not find the old one-screen billing CSS block')
-          p.write_text(ns, encoding='utf-8')
+          @media print {
+            html, body {
+              height: auto !important;
+              min-height: 0 !important;
+              overflow: visible !important;
+            }
+            .app, .body, .main, #billing {
+              height: auto !important;
+              min-height: 0 !important;
+              overflow: visible !important;
+            }
+            #billing .billing-grid {
+              height: auto !important;
+              min-height: 0 !important;
+              overflow: visible !important;
+            }
+            #billing .billing-grid > .panel,
+            #billing .cart {
+              height: auto !important;
+              max-height: none !important;
+              overflow: visible !important;
+            }
+          }
+          '''
+
+          s = s[:start] + css + s[end:]
+          p.write_text(s, encoding='utf-8')
           PY
 
-      - name: Commit fix
+      - name: Commit corrected layout
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add index.html
-          git diff --cached --quiet || git commit -m 'Fix billing page scrolling'
+          git diff --cached --quiet || git commit -m 'Fix one-screen billing layout and printing'
           git push
