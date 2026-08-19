@@ -6,23 +6,23 @@
 @media (min-width: 1001px) {
   html, body {
     height: 100%;
+    margin: 0;
     overflow: hidden;
   }
 
   .app {
     height: 100vh;
     min-height: 0;
-    grid-template-rows: 64px 1fr;
   }
 
   .body {
-    min-height: 0;
     height: calc(100vh - 64px);
+    min-height: 0;
   }
 
   .main {
-    min-height: 0;
     height: 100%;
+    min-height: 0;
     overflow: hidden;
     padding: 10px;
   }
@@ -31,22 +31,14 @@
     height: 100%;
     min-height: 0;
     overflow: hidden;
-    display: flex;
-    flex-direction: column;
-  }
-
-  #billing h1,
-  #billing .sub {
-    flex-shrink: 0;
   }
 
   #billing .menu-tools {
-    flex-shrink: 0;
     margin-bottom: 7px;
   }
 
   #billing .billing-layout {
-    flex: 1;
+    height: calc(100vh - 165px);
     min-height: 0;
     overflow: hidden;
     grid-template-columns: minmax(0, 1.25fr) minmax(340px, .75fr);
@@ -54,37 +46,39 @@
 
   #billing .billing-layout > .panel {
     min-height: 0;
-    overflow: hidden;
   }
 
+  /* Menu can scroll internally */
   #billing .billing-layout > .panel:first-child {
     overflow-y: auto;
   }
 
-  #billing .items {
-    align-content: start;
-  }
-
+  /* Bill panel */
   #billing .billing-layout > .panel:last-child {
+    min-height: 0;
+    overflow: hidden;
     display: flex;
     flex-direction: column;
-    min-height: 0;
   }
 
+  /* Cart gets the available middle space */
   #billing .cart {
-    flex: 1;
-    min-height: 80px;
+    flex: 1 1 auto;
+    min-height: 70px;
     max-height: none;
     overflow-y: auto;
   }
 
+  /* Totals and buttons always remain visible */
   #billing .totals {
-    flex-shrink: 0;
+    flex: 0 0 auto;
   }
 
   #billing .actions {
-    flex-shrink: 0;
+    flex: 0 0 auto;
+    margin-top: 6px;
   }
+}
 }</style><script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script></head><body>
 <div class="app"><header class="topbar"><div class="brand"><img src="assets/swadistha-logo-white.png"></div><div class="top-right"><button onclick="showView('settings')">⚙ Settings</button><span id="clock"></span></div></header><div class="body"><aside class="side no-print"><button class="nav active" data-view="dashboard" onclick="showView('dashboard')">▦ Dashboard</button><button class="nav" data-view="billing" onclick="showView('billing')">₹ Billing</button><button class="nav" data-view="kot" onclick="showView('kot')">☷ KOT</button><button class="nav" data-view="menu" onclick="showView('menu')">≡ Menu</button><button class="nav" data-view="inventory" onclick="showView('inventory')">◈ Inventory</button><button class="nav" data-view="reports" onclick="showView('reports')">▤ Reports</button><button class="nav" data-view="settings" onclick="showView('settings')">⚙ Bill Style</button></aside><main class="main">
 <section class="view active" id="dashboard"><h1>Swadistha Dashboard 👋</h1><div class="sub">Live overview of your cafe.</div><div class="cards"><div class="card"><div class="sale-head"><div><div class="label">Today's Sales</div><div class="value" id="dashSales">••••••</div></div><button class="show-btn" id="showSaleBtn" onclick="toggleTodaySale()">Show</button></div></div><div class="card"><div class="label">Bills Today</div><div class="value" id="dashBills">0</div></div><div class="card"><div class="label">Items Sold</div><div class="value" id="dashItems">0</div></div><div class="card"><div class="label">Low Stock</div><div class="value" id="dashLow">0</div></div></div></section>
