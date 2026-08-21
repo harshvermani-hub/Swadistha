@@ -1,0 +1,39 @@
+name: Apply billing layout
+on:
+  push:
+    branches: [main]
+    paths: ['.billing-layout-trigger']
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch billing layout
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text()
+          css='''\n/* ===== THREE-PART BILLING LAYOUT ===== */\n@media (min-width: 1001px){\n  #billing{height:calc(100vh - 84px);display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:auto 1fr;gap:10px;min-height:0;overflow:hidden}\n  #billing>h1,#billing>.sub{grid-column:1/3;margin:0}\n  #billing>.sub{margin-top:-6px}\n  #billing .billing-sales{grid-column:1;grid-row:2;display:grid;grid-template-rows:45% 55%;gap:10px;min-height:0}\n  #billing .sales-box{min-height:0;overflow:auto;margin:0!important}\n  #billing .dish-box{min-height:0;overflow:hidden;display:flex;flex-direction:column}\n  #billing .dish-box .tools{margin:0 0 10px;flex:0 0 auto}\n  #billing .dish-box .panel{min-height:0;flex:1;overflow:auto}\n  #billing .billing-grid{grid-column:2;grid-row:2;display:block!important;height:100%!important;min-height:0!important;overflow:hidden!important}\n  #billing .billing-grid>.panel:first-child{display:none!important}\n  #billing .billing-grid>.panel:last-child{height:100%;min-height:0;overflow:auto!important;display:flex;flex-direction:column}\n  #billing .cart{flex:1 1 auto;max-height:none;min-height:90px}\n}\n@media(max-width:1000px){#billing .billing-sales{display:block}#billing .sales-box{margin-bottom:10px!important}}\n'''
+          marker='</style>'
+          if css.strip() not in s:
+              s=s.replace(marker,css+marker,1)
+          old='''<div class="panel" style="margin-bottom:10px"><div class="range"><div class="field"><label>Sale Start Date</label><input id="saleStart" type="date" onchange="renderSaleRange()"></div><div class="field"><label>Sale End Date</label><input id="saleEnd" type="date" onchange="renderSaleRange()"></div><button class="btn blue" onclick="renderSaleRange()">Show Sales</button></div><div class="summary"><div class="mini"><span>Sales in selected range</span><b id="rangeSales">₹0</b></div><div class="mini"><span>Bills</span><b id="rangeBills">0</b></div><div class="mini"><span>Items</span><b id="rangeItems">0</b></div></div></div><div class="tools"><input class="search" id="search" placeholder="Search dish..." oninput="renderItems()"><div class="chips" id="cats"></div></div><div class="billing-grid"><div class="panel"><div class="items" id="items"></div></div>'''
+          new='''<div class="billing-sales"><div class="panel sales-box"><div class="range"><div class="field"><label>Sale Start Date</label><input id="saleStart" type="date" onchange="renderSaleRange()"></div><div class="field"><label>Sale End Date</label><input id="saleEnd" type="date" onchange="renderSaleRange()"></div><button class="btn blue" onclick="renderSaleRange()">Show Sales</button></div><div class="summary"><div class="mini"><span>Sales in selected range</span><b id="rangeSales">₹0</b></div><div class="mini"><span>Bills</span><b id="rangeBills">0</b></div><div class="mini"><span>Items</span><b id="rangeItems">0</b></div></div></div><div class="dish-box"><div class="tools"><input class="search" id="search" placeholder="Search dish..." oninput="renderItems()"><div class="chips" id="cats"></div></div><div class="panel"><div class="items" id="items"></div></div></div></div><div class="billing-grid"><div class="panel" style="display:none"><div class="items" id="items-old"></div></div>'''
+          if old not in s:
+              raise SystemExit('Expected billing block not found; no changes made')
+          s=s.replace(old,new,1)
+          p.write_text(s)
+          Path('.billing-layout-trigger').unlink(missing_ok=True)
+          Path('.github/workflows/apply-billing-layout.yml').unlink(missing_ok=True)
+          PY
+      - name: Commit final layout
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add index.html .billing-layout-trigger .github/workflows/apply-billing-layout.yml
+          git add -u
+          git commit -m "Apply requested three-part billing layout" || exit 0
+          git push
