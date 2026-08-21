@@ -1,0 +1,143 @@
+name: Apply billing layout patch
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/apply-billing-layout.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+      - name: Apply requested three-part billing layout
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('index.html')
+          s = p.read_text()
+
+          css = r'''
+
+/* ===== BILLING THREE-PART LAYOUT (USER REQUEST) ===== */
+@media (min-width: 1001px) {
+  #billing {
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+  #billing .billing-layout {
+    height: calc(100vh - 112px);
+    min-height: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 10px;
+  }
+  #billing .billing-layout > .billing-sales-panel {
+    grid-column: 1;
+    grid-row: 1;
+    margin: 0 !important;
+    min-height: 0;
+    overflow-y: auto;
+  }
+  #billing .billing-layout > .billing-search-panel {
+    grid-column: 1;
+    grid-row: 2;
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  #billing .billing-layout > .billing-search-panel .tools {
+    flex: 0 0 auto;
+    margin-bottom: 10px;
+  }
+  #billing .billing-layout > .billing-search-panel .items {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+  }
+  #billing .billing-layout > .billing-new-bill-panel {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  #billing .billing-layout > .billing-new-bill-panel .cart {
+    flex: 1 1 auto;
+    min-height: 70px;
+    max-height: none;
+    overflow-y: auto;
+  }
+  #billing .billing-layout > .billing-new-bill-panel .totals,
+  #billing .billing-layout > .billing-new-bill-panel .actions,
+  #billing .billing-layout > .billing-new-bill-panel .status {
+    flex: 0 0 auto;
+  }
+  #billing .billing-grid {
+    display: none;
+  }
+}
+'''
+          marker = '</style><script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>'
+          if 'BILLING THREE-PART LAYOUT' not in s:
+              if marker not in s:
+                  raise SystemExit('CSS marker not found')
+              s = s.replace(marker, css + '\n</style><script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>', 1)
+
+          js = r'''
+<script>
+(function(){
+  function applyThreePartBillingLayout(){
+    var billing = document.getElementById('billing');
+    if(!billing || billing.querySelector('.billing-layout')) return;
+    var salesPanel = billing.querySelector(':scope > .panel');
+    var tools = billing.querySelector(':scope > .tools');
+    var billingGrid = billing.querySelector('.billing-grid');
+    if(!salesPanel || !tools || !billingGrid) return;
+    var searchPanel = billingGrid.querySelector(':scope > .panel:first-child');
+    var newBillPanel = billingGrid.querySelector(':scope > .panel:last-child');
+    if(!searchPanel || !newBillPanel) return;
+
+    var layout = document.createElement('div');
+    layout.className = 'billing-layout';
+    salesPanel.classList.add('billing-sales-panel');
+    searchPanel.classList.add('billing-search-panel');
+    newBillPanel.classList.add('billing-new-bill-panel');
+
+    searchPanel.insertBefore(tools, searchPanel.firstChild);
+    layout.appendChild(salesPanel);
+    layout.appendChild(searchPanel);
+    layout.appendChild(newBillPanel);
+    billingGrid.replaceWith(layout);
+  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', applyThreePartBillingLayout);
+  else applyThreePartBillingLayout();
+})();
+</script>'''
+          end = '</script></body></html>'
+          if 'applyThreePartBillingLayout' not in s:
+              if end not in s:
+                  raise SystemExit('HTML end marker not found')
+              s = s.replace(end, '</script>' + js + '</body></html>', 1)
+          p.write_text(s)
+          PY
+      - name: Remove temporary workflow and commit only app changes
+        run: |
+          rm .github/workflows/apply-billing-layout.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "Set billing page to three-part desktop layout"
+          git push origin HEAD:main
