@@ -1,0 +1,71 @@
+name: Clean billing layout
+on:
+  push:
+    paths:
+      - '.github/workflows/clean-billing-layout.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Replace conflicting billing layout CSS
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+          pattern = re.compile(r'/\* ===== FINAL BILLING LAYOUT ===== \*/.*?@media\(max-width:1000px\)\{#billing \.billing-sales\{display:block\}#billing \.sales-box\{margin-bottom:10px!important\}\}\n', re.S)
+          replacement = '''/* ===== CLEAN THREE-PART BILLING LAYOUT ===== */
+@media (min-width:1001px){
+  html,body{height:100%;margin:0;overflow:hidden}
+  .app{height:100vh;min-height:0}
+  .body{height:calc(100vh - 64px);min-height:0}
+  .main{height:100%;min-height:0;overflow:hidden;padding:10px}
+  #billing{height:100%;min-height:0;overflow:hidden;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:auto auto minmax(0,1fr);gap:10px}
+  #billing>h1,#billing>.sub{grid-column:1/3;margin:0}
+  #billing .billing-sales{grid-column:1;grid-row:3;display:grid;grid-template-rows:minmax(0,1fr) minmax(0,1fr);gap:10px;min-height:0;overflow:hidden}
+  #billing .sales-box{min-height:0;overflow:auto;margin:0!important}
+  #billing .dish-box{min-height:0;overflow:hidden;display:flex;flex-direction:column}
+  #billing .dish-box .tools{flex:0 0 auto;margin:0 0 10px}
+  #billing .dish-box .panel{flex:1 1 auto;min-height:0;overflow:auto}
+  #billing .billing-grid{grid-column:2;grid-row:3;display:block!important;height:100%!important;min-height:0!important;overflow:hidden!important}
+  #billing .billing-grid>.panel:first-child{display:none!important}
+  #billing .billing-grid>.panel:last-child{height:100%;min-height:0;overflow:hidden!important;display:flex;flex-direction:column}
+  #billing .cart{flex:1 1 auto;min-height:90px;max-height:none;overflow:auto}
+  #billing .totals,#billing .actions,#billing .status{flex:0 0 auto}
+}
+@media(max-width:1000px){
+  #billing .billing-sales{display:block}
+  #billing .sales-box{margin-bottom:10px!important}
+}
+@media print{
+  html,body,.app,.body,.main,#billing,#billing .billing-grid{height:auto!important;min-height:0!important;overflow:visible!important}
+  #billing .billing-grid>.panel,#billing .cart{height:auto!important;max-height:none!important;overflow:visible!important}
+}
+'''
+          s2, n = pattern.subn(replacement, s, count=1)
+          if n != 1:
+              raise SystemExit(f'Expected one billing layout block, found {n}')
+          p.write_text(s2, encoding='utf-8')
+          PY
+      - name: Verify required sections remain
+        run: |
+          grep -q 'id="dashboard"' index.html
+          grep -q 'id="billing"' index.html
+          grep -q 'id="kot"' index.html
+          grep -q 'id="inventory"' index.html
+          grep -q 'id="reports"' index.html
+          grep -q 'id="settings"' index.html
+          grep -q 'CLEAN THREE-PART BILLING LAYOUT' index.html
+      - name: Commit the safe layout fix
+        run: |
+          rm .github/workflows/clean-billing-layout.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html .github/workflows/clean-billing-layout.yml
+          git commit -m 'Clean up three-part billing layout' || exit 0
+          git push
