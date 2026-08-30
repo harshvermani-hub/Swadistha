@@ -25,6 +25,9 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
+      - name: Add report reprint script
+        run: python3 -c "from pathlib import Path; p=Path('index.html'); s=p.read_text(); tag='<script src=\"report-reprint.js\"></script>'; s=s.replace('</head>',tag+'</head>',1); p.write_text(s)"
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
