@@ -1,7 +1,7 @@
 {
   "name": "swadistha-pos",
   "productName": "Swadistha POS",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": true,
   "description": "Swadistha Cafe POS",
   "main": "main.js",
@@ -10,11 +10,11 @@
     "start": "electron .",
     "dev": "electron .",
     "preview": "python -m http.server 4173",
-    "build": "electron-builder --win nsis --x64"
+    "build": "electron-builder --win nsis --x64 --publish never"
   },
   "devDependencies": {
-    "electron": "^38.0.0",
-    "electron-builder": "^26.0.0"
+    "electron": "22.3.27",
+    "electron-builder": "26.0.0"
   },
   "build": {
     "appId": "com.swadistha.pos",
