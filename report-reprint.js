@@ -35,58 +35,58 @@
     });
   }
 
-  // KOT + Bill fix: open both windows from the original click, then run
-  // the two print commands sequentially. window.print() blocks until the
-  // current print dialog is dismissed, so the Bill command runs only after
-  // the KOT print dialog has been completed.
+  // Print KOT + Bill as ONE browser print job with two separate pages.
+  // Page 1 = KOT, page 2 = Bill. This avoids Chrome blocking a second
+  // print window. Browser CSS creates the page break; a physical ESC/POS
+  // cutter still requires a compatible print bridge/driver.
   function installPrintFix(){
     if(typeof window.printKotAndBill!=='function') return;
+
     window.printKotAndBill=function(){
       const b=buildBill();
       if(!b)return;
       const k=makeKot(b);
 
-      const kotWin=window.open('','_blank','width=420,height=720');
-      const billWin=window.open('','_blank','width=420,height=720');
-      if(!kotWin || !billWin){
-        if(kotWin) kotWin.close();
-        if(billWin) billWin.close();
-        toast('Please allow popups for Swadistha printing. Bill was not saved.');
-        return;
-      }
-
       const stripScripts=function(html){
         return html.replace(/<script[\s\S]*?<\/script>/gi,'');
       };
 
-      kotWin.document.open();
-      kotWin.document.write(stripScripts(kotHTML(k)));
-      kotWin.document.close();
+      const kot=stripScripts(kotHTML(k));
+      const bill=stripScripts(receiptHTML(b));
 
-      billWin.document.open();
-      billWin.document.write(stripScripts(receiptHTML(b)));
-      billWin.document.close();
+      const combined='<!doctype html><html><head><meta charset="utf-8"><title>Swadistha KOT + Bill</title><style>'+
+        '@page{margin:0}html,body{margin:0;padding:0;background:#fff}.print-page{page-break-after:always;break-after:page;width:100%;}.print-page:last-child{page-break-after:auto;break-after:auto}'+
+        '</style></head><body>'+
+        '<section class="print-page">'+kot+'</section>'+
+        '<section class="print-page">'+bill+'</section>'+
+        '</body></html>';
 
-      try{
-        kotWin.focus();
-        kotWin.print();
-      }catch(e){
-        kotWin.close();
-        billWin.close();
-        toast('KOT print could not be started. Bill was not saved.');
+      const w=window.open('','_blank','width=420,height=720');
+      if(!w){
+        toast('Allow popups for printing. Bill was not saved.');
         return;
       }
 
-      try{
-        billWin.focus();
-        billWin.print();
-      }catch(e){
-        toast('Bill print could not be started.');
-        return;
-      }
+      w.document.open();
+      w.document.write(combined);
+      w.document.close();
 
-      consumeBill(b);
-      toast('KOT and Bill printed. New bill is ready.');
+      const printNow=function(){
+        try{
+          w.focus();
+          w.print();
+          consumeBill(b);
+          toast('KOT + Bill print job sent. New bill is ready.');
+        }catch(e){
+          toast('Printing could not be started. Bill was not saved.');
+        }
+      };
+
+      if(w.document.readyState==='complete'){
+        setTimeout(printNow,100);
+      }else{
+        w.onload=function(){setTimeout(printNow,100)};
+      }
     };
   }
 
