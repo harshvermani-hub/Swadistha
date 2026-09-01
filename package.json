@@ -1,10 +1,48 @@
 {
   "name": "swadistha-pos",
-  "version": "0.1.0",
+  "productName": "Swadistha POS",
+  "version": "0.2.0",
   "private": true,
-  "description": "Swadistha Cafe POS demo",
+  "description": "Swadistha Cafe POS",
+  "main": "main.js",
+  "author": "Swadistha",
   "scripts": {
+    "start": "electron .",
+    "dev": "electron .",
     "preview": "python -m http.server 4173",
-    "dev": "python -m http.server 4173"
+    "build": "electron-builder --win nsis --x64"
+  },
+  "devDependencies": {
+    "electron": "^38.0.0",
+    "electron-builder": "^26.0.0"
+  },
+  "build": {
+    "appId": "com.swadistha.pos",
+    "productName": "Swadistha POS",
+    "asar": true,
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "**/*",
+      "!dist/**/*",
+      "!node_modules/.cache/**/*"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Swadistha POS"
+    }
   }
 }
