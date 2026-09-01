@@ -35,67 +35,58 @@
     });
   }
 
-  // KOT + Bill fix. Both windows are opened during the original button click
-  // so Chrome treats them as user-initiated. Automatic print scripts are
-  // removed, then KOT is printed first and Bill second.
+  // KOT + Bill fix: open both windows from the original click, then run
+  // the two print commands sequentially. window.print() blocks until the
+  // current print dialog is dismissed, so the Bill command runs only after
+  // the KOT print dialog has been completed.
   function installPrintFix(){
     if(typeof window.printKotAndBill!=='function') return;
     window.printKotAndBill=function(){
       const b=buildBill();
       if(!b)return;
       const k=makeKot(b);
-      consumeBill(b);
 
       const kotWin=window.open('','_blank','width=420,height=720');
       const billWin=window.open('','_blank','width=420,height=720');
       if(!kotWin || !billWin){
         if(kotWin) kotWin.close();
         if(billWin) billWin.close();
-        toast('Please allow popups for Swadistha printing. Bill was saved.');
+        toast('Please allow popups for Swadistha printing. Bill was not saved.');
         return;
       }
 
       const stripScripts=function(html){
-        return html.replace(/<script[\\s\\S]*?<\\/script>/gi,'');
+        return html.replace(/<script[\s\S]*?<\/script>/gi,'');
       };
 
-      const kotDoc=stripScripts(kotHTML(k));
-      const billDoc=stripScripts(receiptHTML(b));
-
       kotWin.document.open();
-      kotWin.document.write(kotDoc);
+      kotWin.document.write(stripScripts(kotHTML(k)));
       kotWin.document.close();
 
       billWin.document.open();
-      billWin.document.write(billDoc);
+      billWin.document.write(stripScripts(receiptHTML(b)));
       billWin.document.close();
 
-      let billStarted=false;
-      const printBill=function(){
-        if(billStarted)return;
-        billStarted=true;
-        try{
-          billWin.focus();
-          billWin.print();
-        }catch(e){
-          toast('Bill print could not be started.');
-        }
-      };
+      try{
+        kotWin.focus();
+        kotWin.print();
+      }catch(e){
+        kotWin.close();
+        billWin.close();
+        toast('KOT print could not be started. Bill was not saved.');
+        return;
+      }
 
-      kotWin.addEventListener('afterprint',function(){
-        setTimeout(printBill,150);
-      },{once:true});
+      try{
+        billWin.focus();
+        billWin.print();
+      }catch(e){
+        toast('Bill print could not be started.');
+        return;
+      }
 
-      setTimeout(function(){
-        try{
-          kotWin.focus();
-          kotWin.print();
-        }catch(e){
-          toast('KOT print could not be started.');
-        }
-      },300);
-
-      toast('KOT first. Bill will print next.');
+      consumeBill(b);
+      toast('KOT and Bill printed. New bill is ready.');
     };
   }
 
