@@ -13,15 +13,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Add report reprint script to app
+      - name: Add app enhancement scripts to build
         shell: powershell
         run: |
           $p = 'index.html'
           $s = Get-Content $p -Raw
           if ($s -notmatch 'report-reprint.js') {
             $s = $s.Replace('</head>', '<script src="report-reprint.js"></script></head>')
-            Set-Content -Path $p -Value $s -Encoding UTF8
           }
+          if ($s -notmatch 'bill-style-customization.js') {
+            $s = $s.Replace('</head>', '<script src="bill-style-customization.js"></script></head>')
+          }
+          Set-Content -Path $p -Value $s -Encoding UTF8
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
