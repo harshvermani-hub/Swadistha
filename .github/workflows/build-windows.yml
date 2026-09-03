@@ -19,7 +19,7 @@ jobs:
           $p = 'index.html'
           $s = Get-Content $p -Raw
           if ($s -notmatch 'report-reprint.js') {
-            $s = $s -replace '</head>', '<script src="report-reprint.js"></script></head>', 1
+            $s = $s.Replace('</head>', '<script src="report-reprint.js"></script></head>')
             Set-Content -Path $p -Value $s -Encoding UTF8
           }
 
