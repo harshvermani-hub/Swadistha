@@ -1,0 +1,1 @@
+Bill Style customization is implemented in bill-style-customization.js. The customization UI supports logo upload, logo size/alignment, header fields, show/hide options, font sizes, footer text, preview, save and reset. It stores preferences in localStorage and is isolated from billing/KOT/reprint logic.
