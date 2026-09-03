@@ -16,7 +16,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Add app enhancement scripts to source and build
+      - name: Add app enhancement scripts to build
         shell: powershell
         run: |
           $p = 'index.html'
@@ -70,3 +70,5 @@ jobs:
           name: Swadistha-POS-Windows-8.1
           path: dist/*.exe
           if-no-files-found: error
+
+# Force a fresh build after the Bill Style interface update
