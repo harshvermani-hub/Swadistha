@@ -5,6 +5,9 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: write
+
 jobs:
   build-windows:
     runs-on: windows-latest
@@ -13,7 +16,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Add app enhancement scripts to build
+      - name: Add app enhancement scripts to source and build
         shell: powershell
         run: |
           $p = 'index.html'
@@ -25,6 +28,17 @@ jobs:
             $s = $s.Replace('</head>', '<script src="bill-style-customization.js"></script></head>')
           }
           Set-Content -Path $p -Value $s -Encoding UTF8
+
+      - name: Commit source interface hookup
+        shell: powershell
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          if (-not (git diff --cached --quiet)) {
+            git commit -m "Add Bill Style interface to source"
+            git push origin HEAD:main
+          }
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
