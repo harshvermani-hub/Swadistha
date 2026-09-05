@@ -26,9 +26,40 @@ window.showView=function(view){
     if(window.__swadisthaAppButtonFixInstalled)return;window.__swadisthaAppButtonFixInstalled=true;
     document.addEventListener('click',function(e){
       const item=e.target.closest&&e.target.closest('.item');
-      if(item){e.preventDefault();e.stopImmediatePropagation();const match=(item.getAttribute('onclick')||'').match(/addItem\((\d+)\)/);if(match&&typeof window.addItem==='function'){window.addItem(Number(match[1]));return}const name=item.querySelector('b')?.textContent?.trim();if(name&&Array.isArray(window.menu)&&typeof window.addItem==='function'){const m=window.menu.find(x=>x.name===name);if(m)window.addItem(m.id)}return}
+      if(item){
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        // Execute the element's original inline handler directly. This is
+        // deliberately independent of whether a top-level function was
+        // exposed on window, and therefore survives let/const scoping.
+        try{
+          if(typeof item.onclick==='function'){
+            item.onclick.call(item,e);
+            return;
+          }
+          const handler=item.getAttribute('onclick');
+          if(handler){Function(handler).call(item,e);return;}
+        }catch(err){console.error('Billing item click failed:',err)}
+        // Last-resort fallback for the standard addItem(id) markup.
+        const match=(item.getAttribute('onclick')||'').match(/addItem\((\d+)\)/);
+        if(match&&typeof window.addItem==='function'){window.addItem(Number(match[1]));return}
+        const name=item.querySelector('b')?.textContent?.trim();
+        if(name&&Array.isArray(window.menu)&&typeof window.addItem==='function'){
+          const m=window.menu.find(x=>x.name===name);if(m)window.addItem(m.id);
+        }
+        return;
+      }
       const addDish=e.target.closest&&e.target.closest('#menu button.btn.orange');
-      if(addDish&&typeof window.addMenuItem==='function'){e.preventDefault();e.stopImmediatePropagation();window.addMenuItem()}
+      if(addDish){
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        try{
+          if(typeof addDish.onclick==='function'){addDish.onclick.call(addDish,e);return;}
+          const handler=addDish.getAttribute('onclick');
+          if(handler){Function(handler).call(addDish,e);return;}
+        }catch(err){console.error('Add dish click failed:',err)}
+        if(typeof window.addMenuItem==='function')window.addMenuItem();
+      }
     },true);
   }
   function installPrintFix(){
