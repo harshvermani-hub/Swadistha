@@ -58,7 +58,7 @@
         '@page{margin:0}html,body{margin:0;padding:0;background:#fff}.print-page{page-break-after:always;break-after:page;width:100%;}.print-page:last-child{page-break-after:auto;break-after:auto}'+
         '</style></head><body>'+
         '<section class="print-page">'+kot+'</section>'+
-        '<section class="print-page">'+bill+'</section>'+
+        '<section class="print-page">'+bill+'</section>'+ 
         '</body></html>';
 
       const w=window.open('','_blank','width=420,height=720');
@@ -90,6 +90,30 @@
     };
   }
 
+  function fixMojibake(){
+    const map={
+      '\u00e2\u201a\u00b9':String.fromCharCode(8377),
+      '\u00e2\u0161\u2122':String.fromCharCode(9881),
+      '\u00f0\u0178\u2018\u2039':String.fromCodePoint(128075),
+      '\u00e2\u2013\u00a6':String.fromCharCode(9638),
+      '\u00e2\u2018\u00b7':String.fromCharCode(9783),
+      '\u00e2\u02dc\u00b7':String.fromCharCode(9783),
+      '\u00e2\u2030\u00a1':String.fromCharCode(8801),
+      '\u00e2\u2014\u02c6':String.fromCharCode(9672),
+      '\u00e2\u2013\u00a4':String.fromCharCode(9636)
+    };
+    const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
+    const nodes=[];
+    while(walker.nextNode()) nodes.push(walker.currentNode);
+    nodes.forEach(function(node){
+      let text=node.nodeValue;
+      Object.keys(map).forEach(function(bad){
+        if(text.indexOf(bad)!==-1) text=text.split(bad).join(map[bad]);
+      });
+      node.nodeValue=text;
+    });
+  }
+
   const oldRenderReports=window.renderReports;
   if(typeof oldRenderReports==='function'){
     window.renderReports=function(){oldRenderReports();addReprintButtons()};
@@ -98,9 +122,11 @@
   document.addEventListener('DOMContentLoaded',function(){
     installPrintFix();
     addReprintButtons();
+    fixMojibake();
     new MutationObserver(function(){
       addReprintButtons();
       installPrintFix();
+      fixMojibake();
     }).observe(document.body,{childList:true,subtree:true});
   });
 })();
