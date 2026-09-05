@@ -16,27 +16,26 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Add app enhancement scripts to build
+      - name: Repair UTF-8 source encoding
         shell: powershell
         run: |
           $p = 'index.html'
           $s = Get-Content $p -Raw
-          if ($s -notmatch 'report-reprint.js') {
-            $s = $s.Replace('</head>', '<script src="report-reprint.js"></script></head>')
+          if ($s -match '[âÃð]') {
+            $cp1252 = [System.Text.Encoding]::GetEncoding(1252)
+            $utf8 = [System.Text.Encoding]::UTF8
+            $fixed = $utf8.GetString($cp1252.GetBytes($s))
+            [System.IO.File]::WriteAllText((Resolve-Path $p), $fixed, (New-Object System.Text.UTF8Encoding($false)))
           }
-          if ($s -notmatch 'bill-style-customization.js') {
-            $s = $s.Replace('</head>', '<script src="bill-style-customization.js"></script></head>')
-          }
-          Set-Content -Path $p -Value $s -Encoding UTF8
 
-      - name: Commit source interface hookup
+      - name: Commit encoding repair
         shell: powershell
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add index.html
           if (-not (git diff --cached --quiet)) {
-            git commit -m "Add Bill Style interface to source"
+            git commit -m "Repair UTF-8 encoding in app source"
             git push origin HEAD:main
           }
 
@@ -70,5 +69,3 @@ jobs:
           name: Swadistha-POS-Windows-8.1
           path: dist/*.exe
           if-no-files-found: error
-
-# Force a fresh build after the Bill Style interface update
