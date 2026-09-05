@@ -11,14 +11,12 @@
       if(!actions) return;
       const bill=bills.find(x=>String(x.no)===billNo);
       if(!bill) return;
-
       const billBtn=document.createElement('button');
       billBtn.className='btn orange';
       billBtn.textContent='Print Bill';
       billBtn.onclick=function(){openPrint(receiptHTML(bill),function(){toast('Bill reprinted.')})};
       actions.appendChild(document.createTextNode(' '));
       actions.appendChild(billBtn);
-
       const kot=kots.slice().reverse().find(function(x){
         return x.items && bill.items && x.items.length===bill.items.length &&
           x.items.every(function(ki){return bill.items.some(function(bi){return bi.name===ki.name && Number(bi.qty)===Number(ki.qty)})});
@@ -35,11 +33,37 @@
     });
   }
 
+  function installNavigationFix(){
+    if(window.__swadisthaNavigationFixInstalled) return;
+    window.__swadisthaNavigationFixInstalled=true;
+    document.addEventListener('click',function(e){
+      const nav=e.target.closest && e.target.closest('.nav[data-view]');
+      if(!nav) return;
+      const view=nav.getAttribute('data-view');
+      const target=document.getElementById(view);
+      if(!target) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      document.querySelectorAll('.view').forEach(function(x){x.classList.remove('active')});
+      target.classList.add('active');
+      document.querySelectorAll('.nav[data-view]').forEach(function(x){x.classList.toggle('active',x===nav)});
+      try{
+        if(view==='billing' && typeof renderBilling==='function'){
+          renderBilling();
+          if(typeof renderSaleRange==='function')renderSaleRange();
+        }
+        if(view==='reports' && typeof renderReports==='function')renderReports();
+        if(view==='inventory' && typeof renderInventory==='function')renderInventory();
+        if(view==='menu' && typeof renderMenu==='function')renderMenu();
+        if(view==='kot' && typeof renderKOT==='function')renderKOT();
+      }catch(err){console.error('Navigation render error:',err)}
+    },true);
+  }
+
   function installPrintFix(){
     if(typeof window.printKotAndBill!=='function') return;
     if(window.__swadisthaPrintFixInstalled) return;
     window.__swadisthaPrintFixInstalled=true;
-
     window.printKotAndBill=function(){
       const b=buildBill();
       if(!b)return;
@@ -70,13 +94,11 @@
     };
     const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
     const nodes=[];while(walker.nextNode())nodes.push(walker.currentNode);
-    let changed=false;
     nodes.forEach(function(node){
       let text=node.nodeValue;
-      Object.keys(map).forEach(function(bad){if(text.indexOf(bad)!==-1){text=text.split(bad).join(map[bad]);changed=true;}});
-      if(text!==node.nodeValue)node.nodeValue=text;
+      Object.keys(map).forEach(function(bad){if(text.indexOf(bad)!==-1)text=text.split(bad).join(map[bad]);});
+      node.nodeValue=text;
     });
-    return changed;
   }
 
   const oldRenderReports=window.renderReports;
@@ -85,6 +107,7 @@
   }
 
   document.addEventListener('DOMContentLoaded',function(){
+    installNavigationFix();
     installPrintFix();
     addReprintButtons();
     fixMojibake();
