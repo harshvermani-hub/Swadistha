@@ -35,83 +35,48 @@
     });
   }
 
-  // Print KOT + Bill as ONE browser print job with two separate pages.
-  // Page 1 = KOT, page 2 = Bill. This avoids Chrome blocking a second
-  // print window. Browser CSS creates the page break; a physical ESC/POS
-  // cutter still requires a compatible print bridge/driver.
   function installPrintFix(){
     if(typeof window.printKotAndBill!=='function') return;
+    if(window.__swadisthaPrintFixInstalled) return;
+    window.__swadisthaPrintFixInstalled=true;
 
     window.printKotAndBill=function(){
       const b=buildBill();
       if(!b)return;
       const k=makeKot(b);
-
-      const stripScripts=function(html){
-        return html.replace(/<script[\s\S]*?<\/script>/gi,'');
-      };
-
+      const stripScripts=function(html){return html.replace(/<script[\s\S]*?<\/script>/gi,'');};
       const kot=stripScripts(kotHTML(k));
       const bill=stripScripts(receiptHTML(b));
-
-      const combined='<!doctype html><html><head><meta charset="utf-8"><title>Swadistha KOT + Bill</title><style>'+
-        '@page{margin:0}html,body{margin:0;padding:0;background:#fff}.print-page{page-break-after:always;break-after:page;width:100%;}.print-page:last-child{page-break-after:auto;break-after:auto}'+
-        '</style></head><body>'+
-        '<section class="print-page">'+kot+'</section>'+
-        '<section class="print-page">'+bill+'</section>'+ 
-        '</body></html>';
-
+      const combined='<!doctype html><html><head><meta charset="utf-8"><title>Swadistha KOT + Bill</title><style>@page{margin:0}html,body{margin:0;padding:0;background:#fff}.print-page{page-break-after:always;break-after:page;width:100%}.print-page:last-child{page-break-after:auto;break-after:auto}</style></head><body><section class="print-page">'+kot+'</section><section class="print-page">'+bill+'</section></body></html>';
       const w=window.open('','_blank','width=420,height=720');
-      if(!w){
-        toast('Allow popups for printing. Bill was not saved.');
-        return;
-      }
-
-      w.document.open();
-      w.document.write(combined);
-      w.document.close();
-
-      const printNow=function(){
-        try{
-          w.focus();
-          w.print();
-          consumeBill(b);
-          toast('KOT + Bill print job sent. New bill is ready.');
-        }catch(e){
-          toast('Printing could not be started. Bill was not saved.');
-        }
-      };
-
-      if(w.document.readyState==='complete'){
-        setTimeout(printNow,100);
-      }else{
-        w.onload=function(){setTimeout(printNow,100)};
-      }
+      if(!w){toast('Allow popups for printing. Bill was not saved.');return;}
+      w.document.open();w.document.write(combined);w.document.close();
+      const printNow=function(){try{w.focus();w.print();consumeBill(b);toast('KOT + Bill print job sent. New bill is ready.')}catch(e){toast('Printing could not be started. Bill was not saved.')}};
+      if(w.document.readyState==='complete')setTimeout(printNow,100);else w.onload=function(){setTimeout(printNow,100)};
     };
   }
 
   function fixMojibake(){
     const map={
-      '\u00e2\u201a\u00b9':String.fromCharCode(8377),
-      '\u00e2\u0161\u2122':String.fromCharCode(9881),
-      '\u00f0\u0178\u2018\u2039':String.fromCodePoint(128075),
-      '\u00e2\u2013\u00a6':String.fromCharCode(9638),
-      '\u00e2\u2018\u00b7':String.fromCharCode(9783),
-      '\u00e2\u02dc\u00b7':String.fromCharCode(9783),
-      '\u00e2\u2030\u00a1':String.fromCharCode(8801),
-      '\u00e2\u2014\u02c6':String.fromCharCode(9672),
-      '\u00e2\u2013\u00a4':String.fromCharCode(9636)
+      [String.fromCharCode(0x00e2,0x201a,0x00b9)]:String.fromCharCode(8377),
+      [String.fromCharCode(0x00e2,0x0161,0x2122)]:String.fromCharCode(9881),
+      [String.fromCharCode(0x00f0,0x0178,0x2018,0x2039)]:String.fromCodePoint(128075),
+      [String.fromCharCode(0x00e2,0x2013,0x00a6)]:String.fromCharCode(9638),
+      [String.fromCharCode(0x00e2,0x2018,0x00b7)]:String.fromCharCode(9783),
+      [String.fromCharCode(0x00e2,0x02dc,0x00b7)]:String.fromCharCode(9783),
+      [String.fromCharCode(0x00e2,0x2030,0x00a1)]:String.fromCharCode(8801),
+      [String.fromCharCode(0x00e2,0x2014,0x02c6)]:String.fromCharCode(9672),
+      [String.fromCharCode(0x00e2,0x2013,0x00a4)]:String.fromCharCode(9636)
     };
     const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
-    const nodes=[];
-    while(walker.nextNode()) nodes.push(walker.currentNode);
+    const nodes=[];while(walker.nextNode())nodes.push(walker.currentNode);
+    let changed=false;
     nodes.forEach(function(node){
       let text=node.nodeValue;
-      Object.keys(map).forEach(function(bad){
-        if(text.indexOf(bad)!==-1) text=text.split(bad).join(map[bad]);
-      });
-      node.nodeValue=text;
+      Object.keys(map).forEach(function(bad){if(text.indexOf(bad)!==-1){text=text.split(bad).join(map[bad]);changed=true;}});
+      if(text!==node.nodeValue)node.nodeValue=text;
     });
+    return changed;
   }
 
   const oldRenderReports=window.renderReports;
@@ -123,10 +88,5 @@
     installPrintFix();
     addReprintButtons();
     fixMojibake();
-    new MutationObserver(function(){
-      addReprintButtons();
-      installPrintFix();
-      fixMojibake();
-    }).observe(document.body,{childList:true,subtree:true});
   });
 })();
