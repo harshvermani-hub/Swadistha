@@ -1,3 +1,20 @@
+// Navigation must be available immediately, even if another script has a runtime error.
+window.showView=function(view){
+  var target=document.getElementById(view);
+  if(!target)return;
+  document.querySelectorAll('.view').forEach(function(x){x.classList.remove('active')});
+  target.classList.add('active');
+  document.querySelectorAll('.nav[data-view]').forEach(function(x){x.classList.toggle('active',x.getAttribute('data-view')===view)});
+  try{
+    if(view==='billing'&&typeof renderBilling==='function')renderBilling();
+    if(view==='billing'&&typeof renderSaleRange==='function')renderSaleRange();
+    if(view==='reports'&&typeof renderReports==='function')renderReports();
+    if(view==='inventory'&&typeof renderInventory==='function')renderInventory();
+    if(view==='menu'&&typeof renderMenu==='function')renderMenu();
+    if(view==='kot'&&typeof renderKOT==='function')renderKOT();
+  }catch(e){console.error('Navigation error:',e)}
+};
+
 (function(){
   function addReprintButtons(){
     const rows=document.querySelectorAll('#reportRows tr');
@@ -44,19 +61,7 @@
       if(!target) return;
       e.preventDefault();
       e.stopImmediatePropagation();
-      document.querySelectorAll('.view').forEach(function(x){x.classList.remove('active')});
-      target.classList.add('active');
-      document.querySelectorAll('.nav[data-view]').forEach(function(x){x.classList.toggle('active',x===nav)});
-      try{
-        if(view==='billing' && typeof renderBilling==='function'){
-          renderBilling();
-          if(typeof renderSaleRange==='function')renderSaleRange();
-        }
-        if(view==='reports' && typeof renderReports==='function')renderReports();
-        if(view==='inventory' && typeof renderInventory==='function')renderInventory();
-        if(view==='menu' && typeof renderMenu==='function')renderMenu();
-        if(view==='kot' && typeof renderKOT==='function')renderKOT();
-      }catch(err){console.error('Navigation render error:',err)}
+      window.showView(view);
     },true);
   }
 
