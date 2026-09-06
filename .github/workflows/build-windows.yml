@@ -19,7 +19,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
+          cache: npm
 
       - name: Install ImageMagick
         shell: powershell
@@ -29,7 +30,7 @@ jobs:
         shell: powershell
         run: |
           New-Item -ItemType Directory -Force -Path build | Out-Null
-          magick assets/swadistha-app-icon.jpg -resize 256x256 build/icon.ico
+          magick assets/swadistha-app-icon.jpg -define icon:auto-resize=256,128,64,48,32,16 build/icon.ico
 
       - name: Install dependencies
         run: npm install
@@ -37,12 +38,14 @@ jobs:
       - name: Verify Electron version
         run: npx electron --version
 
-      - name: Build Windows installer
-        run: npx electron-builder --win nsis --x64 --publish never
+      - name: Build Windows installer and portable app
+        run: npm run build
 
-      - name: Upload installer
+      - name: Upload Windows builds
         uses: actions/upload-artifact@v4
         with:
-          name: Swadistha-POS-Windows-8.1
-          path: dist/*.exe
+          name: Swadistha-POS-Windows
+          path: |
+            dist/*.exe
+            dist/*.blockmap
           if-no-files-found: error
