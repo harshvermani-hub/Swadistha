@@ -3,7 +3,7 @@ name: Build Swadistha Windows App
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches: [main, build-installer-f0023d5]
 
 jobs:
   build-windows:
@@ -19,7 +19,7 @@ jobs:
           $p = 'index.html'
           $s = Get-Content $p -Raw
           if ($s -notmatch 'report-reprint.js') {
-            $s = $s -replace '</head>', '<script src="report-reprint.js"></script></head>', 1
+            $s = [regex]::Replace($s, '</head>', '<script src="report-reprint.js"></script></head>', 1)
             Set-Content -Path $p -Value $s -Encoding UTF8
           }
 
