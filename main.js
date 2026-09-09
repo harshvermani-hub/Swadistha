@@ -10,8 +10,11 @@ function createWindow() {
     backgroundColor: '#f5f6f8',
     icon: path.join(__dirname, 'assets', 'swadistha-app-icon.jpg'),
     webPreferences: {
-      contextIsolation: true,
-      nodeIntegration: false
+      // The existing POS UI uses inline handlers and legacy DOM globals.
+      // Keep the renderer compatible with that UI and load the bridge first.
+      contextIsolation: false,
+      nodeIntegration: false,
+      preload: path.join(__dirname, 'preload.js')
     }
   });
 
