@@ -4,6 +4,8 @@ on:
   workflow_dispatch:
   push:
     branches: [main, fix-installer-buttons-v2]
+  pull_request:
+    branches: [main]
 
 jobs:
   build-windows:
